@@ -1,13 +1,9 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import GUI from 'lil-gui'
+
 import fireworkVertexShader from './shaders/firework/vertex.glsl?raw'
 import fireworkFragmentShader from './shaders/firework/fragment.glsl?raw'
-
-
-// dont forget to git init
-
-
 
 /**
  * Base
@@ -31,6 +27,7 @@ const sizes = {
     width: window.innerWidth,
     height: window.innerHeight
 }
+
 
 window.addEventListener('resize', () =>
 {
@@ -70,13 +67,37 @@ renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 /**
- * Test
+ * fire works
+ * 
  */
-const test = new THREE.Mesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshBasicMaterial()
-)
-scene.add(test)
+
+function createFireWork(count){
+
+    const positionArray = new Float32Array(count * 3)
+
+    for ( let i = 0; i < count; i++){
+        const i3 = i * 3;
+        positionArray[i3] = Math.random() - .5
+        positionArray[i3 + 1] = Math.random() - .5
+        positionArray[i3 + 2] = Math.random() - .5
+
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute( 'position', new THREE.Float32BufferAttribute(positionArray, 3))
+
+    const material = new THREE.ShaderMaterial({
+        vertexShader: fireworkVertexShader,
+        fragmentShader: fireworkFragmentShader
+    })
+
+    // const material = new THREE.MeshBasicMaterial()
+    const fireWork = new THREE.Points( geometry, material)
+    scene.add(fireWork)
+
+}
+
+createFireWork( 100) 
 
 /**
  * Animate
