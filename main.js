@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import GUI from 'lil-gui'
+import gsap from 'gsap'
 
 import fireworkVertexShader from './shaders/firework/vertex.glsl?raw'
 import fireworkFragmentShader from './shaders/firework/fragment.glsl?raw'
@@ -31,7 +32,6 @@ const textures = [
     textureLoader.load('./particles/8.png'),
 ]
 
-console.log( textures)
 
 /**
  * Sizes
@@ -91,20 +91,36 @@ renderer.setPixelRatio(sizes.pixelRatio)
  * 
  */
 
-function createFireWork(count, size, position, texture){
+function createFireWork(count, size, position, texture, radius, color){
 
     const positionArray = new Float32Array(count * 3)
+    const sizesArray = new Float32Array(count)
+
 
     for ( let i = 0; i < count; i++){
+
+        const spherical = new THREE.Spherical(
+            radius * 0.75 + Math.random() * .25,
+            Math.random() * Math.PI,
+            Math.random() * Math.PI * 2
+        )
+        
+        const position = new THREE.Vector3()
+        position.setFromSpherical(spherical)
+
         const i3 = i * 3;
-        positionArray[i3] = Math.random() - .5
-        positionArray[i3 + 1] = Math.random() - .5
-        positionArray[i3 + 2] = Math.random() - .5
+        positionArray[i3] = position.x
+        positionArray[i3 + 1] = position.y
+        positionArray[i3 + 2] = position.z
+
+        sizesArray[i] = Math.random()
 
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute( 'position', new THREE.Float32BufferAttribute(positionArray, 3))
+    geometry.setAttribute( 'aSizes', new THREE.Float32BufferAttribute(sizesArray, 1))
+
 
     texture.flipY = false
 
@@ -114,9 +130,14 @@ function createFireWork(count, size, position, texture){
         uniforms: {
             uSize: new THREE.Uniform(size),
             uResolution: new THREE.Uniform(sizes.resolution),
-            uTexture: new THREE.Uniform(texture)
+            uTexture: new THREE.Uniform(texture),
+            uColor: new THREE.Uniform(color),
+            uProgress: new THREE.Uniform(0)
+
         },
         transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
     })
 
     // const material = new THREE.MeshBasicMaterial()
@@ -125,9 +146,39 @@ function createFireWork(count, size, position, texture){
     fireWork.position.copy( position)
     scene.add(fireWork)
 
+    function distroy(){
+        scene.remove( fireWork)
+        geometry.dispose()
+        material.dispose()
+    }
+
+    gsap.to( material.uniforms.uProgress,
+        { value: 1, duration: 3, ease: 'linear', onComplete: distroy}
+    )
+
+
+
 }
 
-createFireWork( 100, .5, new THREE.Vector3(), textures[7]) 
+createFireWork( 
+    100,  //count
+    1.,  //size 
+    new THREE.Vector3(),  //position
+    textures[7],  //texture
+    1, // radius,
+    new THREE.Color('#8affff')  // color
+) 
+
+window.addEventListener( 'click', ()=> {
+    createFireWork( 
+        100,  //count
+        1.,  //size 
+        new THREE.Vector3(),  //position
+        textures[7],  //texture
+        1, // radius,
+        new THREE.Color('#8affff')  // color
+    )  
+})
 
 
 // plane
