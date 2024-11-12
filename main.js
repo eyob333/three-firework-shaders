@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import GUI from 'lil-gui'
 import gsap from 'gsap'
-
+import { Sky } from 'three/addons/objects/Sky.js'
 import fireworkVertexShader from './shaders/firework/vertex.glsl?raw'
 import fireworkFragmentShader from './shaders/firework/fragment.glsl?raw'
 
@@ -95,6 +95,8 @@ function createFireWork(count, size, position, texture, radius, color){
 
     const positionArray = new Float32Array(count * 3)
     const sizesArray = new Float32Array(count)
+    const timeMultiplyerArray = new Float32Array(count)
+
 
 
     for ( let i = 0; i < count; i++){
@@ -114,12 +116,17 @@ function createFireWork(count, size, position, texture, radius, color){
         positionArray[i3 + 2] = position.z
 
         sizesArray[i] = Math.random()
+        
+        timeMultiplyerArray[i] = 1. + Math.random()
 
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute( 'position', new THREE.Float32BufferAttribute(positionArray, 3))
     geometry.setAttribute( 'aSizes', new THREE.Float32BufferAttribute(sizesArray, 1))
+    geometry.setAttribute( 'aTimeMultiplayer', new THREE.Float32BufferAttribute(timeMultiplyerArray, 1))
+
+    
 
 
     texture.flipY = false
@@ -160,25 +167,76 @@ function createFireWork(count, size, position, texture, radius, color){
 
 }
 
-createFireWork( 
-    100,  //count
-    1.,  //size 
-    new THREE.Vector3(),  //position
-    textures[7],  //texture
-    1, // radius,
-    new THREE.Color('#8affff')  // color
-) 
+createRandomFireWork()
 
-window.addEventListener( 'click', ()=> {
-    createFireWork( 
-        100,  //count
-        1.,  //size 
-        new THREE.Vector3(),  //position
-        textures[7],  //texture
-        1, // radius,
-        new THREE.Color('#8affff')  // color
-    )  
-})
+function createRandomFireWork(){
+    const count = Math.round( 400 + Math.random() * 1000 )
+    const positon = new THREE.Vector3(
+        (Math.random() - .5) * 2,
+        Math.random() ,
+        (Math.random() - .5) * 2,
+    )
+    const size = 0.1 + Math.random() * .1
+    const texture = textures[ Math.floor( Math.random() * textures.length )]
+    const color = new THREE.Color().setHSL( Math.random(), 1, 0.7)
+    const radius = .5 + Math.random()
+
+    createFireWork( count, size, positon, texture, radius, color)
+
+}
+
+
+window.addEventListener( 'click', createRandomFireWork )
+
+
+const sky = new Sky();
+sky.scale.setScalar( 450000 );
+scene.add( sky );
+
+const sun = new THREE.Vector3();
+
+/// GUI
+
+const effectController = {
+    turbidity: 10,
+    rayleigh: 3,
+    mieCoefficient: 0.005,
+    mieDirectionalG: 0.7,
+    elevation: 2,
+    azimuth: 180,
+    exposure: renderer.toneMappingExposure
+};
+
+function guiChanged() {
+
+    const uniforms = sky.material.uniforms;
+    uniforms[ 'turbidity' ].value = effectController.turbidity;
+    uniforms[ 'rayleigh' ].value = effectController.rayleigh;
+    uniforms[ 'mieCoefficient' ].value = effectController.mieCoefficient;
+    uniforms[ 'mieDirectionalG' ].value = effectController.mieDirectionalG;
+
+    const phi = THREE.MathUtils.degToRad( 90 - effectController.elevation );
+    const theta = THREE.MathUtils.degToRad( effectController.azimuth );
+
+    sun.setFromSphericalCoords( 1, phi, theta );
+
+    uniforms[ 'sunPosition' ].value.copy( sun );
+
+    renderer.toneMappingExposure = effectController.exposure;
+    renderer.render( scene, camera );
+
+}
+
+
+gui.add( effectController, 'turbidity', 0.0, 20.0, 0.1 ).onChange( guiChanged );
+gui.add( effectController, 'rayleigh', 0.0, 4, 0.001 ).onChange( guiChanged );
+gui.add( effectController, 'mieCoefficient', 0.0, 0.1, 0.001 ).onChange( guiChanged );
+gui.add( effectController, 'mieDirectionalG', 0.0, 1, 0.001 ).onChange( guiChanged );
+gui.add( effectController, 'elevation', 0, 90, 0.1 ).onChange( guiChanged );
+gui.add( effectController, 'azimuth', - 180, 180, 0.1 ).onChange( guiChanged );
+gui.add( effectController, 'exposure', 0, 1, 0.0001 ).onChange( guiChanged );
+
+guiChanged()
 
 
 // plane
